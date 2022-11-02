@@ -113,13 +113,18 @@ def choose_xlsx_file():
             return 0
 
 def choose_vlan():
-    print('\n\t\033[33mWho are you, warrior?\n\tChoose the VLAN you want to check:\n\033[0m')
-    arr_VLAN = ['Vlan21NO','Vlan100', 'Vlan108', 'Vlan110', 'Vlan133', 'Vlan192']
+    print('\n\t\033[33mChoose the VLAN you want to check:\n\033[0m')
+    vlans_dict = VLAN_Administration.get_dict_of_vlans()
+    arr_VLAN = []
+    for vlan_name in vlans_dict:
+        arr_VLAN.append(vlan_name)
     vlan_id = 1
     for vlan in arr_VLAN:
         current_string = '\033[0m\t' + str(vlan_id) + '\033[33m ' + arr_VLAN[vlan_id-1] 
         print(current_string)
         vlan_id+=1
+    current_string = '\033[33m\t' + str(vlan_id) + ' Refresh\033[0m'
+    print(current_string)
     chosen_vlan_id = int(user_choosing(len(arr_VLAN)))
     if chosen_vlan_id == 0:
         choose_vlan()
@@ -202,27 +207,26 @@ def changes_writer(xlsx_file_path, sheet_name, list_to_write, new_xlsx_filename)
 
 def ending(missingIp):
     print('\n\t\033[33mSuccess\033[0m')
-    match len(missingIpDictionary):
+    match len(missingIp):
         case 0:
             press_any()
         case _:
             print('\n\t\033[33m The following list contains information about those IP-addresses that are not in Google Sheet,\n\tbut the scanner detected devices behind IP. See "Missing Mac" in changelog\n')
-            print(missingIpDictionary)
+            print(missingIp)
 
 def scan_network_return_dict(network):
     nm = nmap.PortScanner()
     nmapDict = {}
     ip_address_list = []
-    nets_dict = {
-    'Vlan21NO': '192.168.21.0/24', 'Vlan6': '10.0.6.0/24',
-    'Vlan108':'10.0.8.0/24', 'Vlan100':'10.0.100.0/24',
-    'Vlan110':'10.0.0.0/22', 'Vlan192':'192.168.0.0/24', 'Vlan133':'10.0.33.0/24'
-    }   
+    nets_dict = VLAN_Administration.get_dict_of_vlans()
+    print('\033[33mScanning...')
     nmap_scan_dict = nm.scan(hosts=nets_dict[network], arguments='-n -sP -PE -PA21,23,80,3389')
+    print('Done.\033[0m')
     ip_without_mac = []
     for ip in nmap_scan_dict['scan'].keys():
         ip_address_list.append(ip)
-        try:    macAdd = nmap_scan_dict['scan'][ip]['addresses']['mac']
+        try:
+            macAdd = nmap_scan_dict['scan'][ip]['addresses']['mac']
         except:
             print('KeyError, scanned ip has no mac from nmap. The problem IP:', ip)
             ip_without_mac.append(ip)
@@ -282,7 +286,7 @@ class VLAN_Administration :
         dict_of_vlans = VLAN_Administration.get_dict_of_vlans()
         dict_of_vlans[new_vlanname] = new_network
         VLAN_Administration.vlan_data_write(dict_of_vlans)
-        print('\033[33muccess!\033[0m')
+        print('\033[33m\n\tSuccess!\033[0m\n')
         administrate_vlans()
     def delete_vlan():
         vlans_dict = VLAN_Administration.get_dict_of_vlans()
@@ -315,20 +319,9 @@ def start_menu():
             correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
             changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
             ending(missingIpDictionary)
-            press_any()
+            start_menu()
         case 'Manage my networks':
             administrate_vlans()
-
-#print_hello_words()
-#press_any()
-#xlsx_path = choose_xlsx_file()
-#vlanname = choose_vlan()  
-#nmapDict, ip_without_mac = scan_network_return_dict(vlanname)
-#edited_xlsx_filename, changelog_filename = get_name_for_files()
-#correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
-#changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
-#ending(missingIpDictionary)
-#press_any()
 
 print_hello_words()
 start_menu()

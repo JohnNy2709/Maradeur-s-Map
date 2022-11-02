@@ -4,7 +4,8 @@ import openpyxl
 import datetime
 import pandas
 import nmap
-
+import pickle
+from email.policy import default
 kernel32 = ctypes.windll.kernel32
 kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 
@@ -52,7 +53,6 @@ def if_format_needed(file_name, format_needed):
 def press_any():
     print('\n\t\033[33mPress any key to keep doing things..\033[0m \n')
     input()
-    #clear_screen()
 
 def error_message(*code_index):
     match code_index:
@@ -231,6 +231,93 @@ def scan_network_return_dict(network):
         nmapDict[ip] = macAdd
     return nmapDict, ip_without_mac
 
+class VLAN_Administration :
+    def get_dict_of_vlans():
+        with open('data', 'rb') as f:
+            vlan_dictionary = pickle.load(f)
+        return vlan_dictionary
+    def vlan_data_write(vlan_dict_to_write):
+        with open('data', 'wb') as f:
+            pickle.dump(vlan_dict_to_write, f)
+    def display_vlans():
+        vlan_dict = VLAN_Administration.get_dict_of_vlans()
+        print('\033[33m\t Current VLANS:\n\t VLAN Name \t Network\033[0m')
+        for vlan in vlan_dict:
+            print('\t\033[0m', vlan, '\t', vlan_dict[vlan], '\033[0m')
+    def add_vlan():
+        def check_net_format(network_input):
+            def check_max_val(arr):
+                check_flag = True
+                i = 0
+                if len(arr) != 5: check_flag = False
+                for val in arr:
+                    try:
+                        val = int(val)
+                        if val > 255 : check_flag = False
+                        if i == 4:
+                            if (val > 32): check_flag = False
+                        i+=1
+                    except: check_flag = False
+                return check_flag    
+            flag = True
+            while flag:
+                network_input = network_input.strip()
+                net_and_mask = network_input.split('/')
+                match len(net_and_mask):
+                    case 2:
+                        arr_to_check = net_and_mask[0].split('.')
+                        arr_to_check.append(net_and_mask[1])
+                        if check_max_val(arr_to_check):
+                            flag = False
+                        else:
+                            error_message()
+                            network_input = input('\t')
+                    case _:
+                        error_message()
+                        network_input = input('\t')
+            return network_input
+        new_vlanname = input('\033[33m\n\tEnter the VLAN name: \033[0m')
+        new_network = input('\033[33m\tEnter the network address: \033[0m')
+        new_network = check_net_format(new_network)
+        dict_of_vlans = VLAN_Administration.get_dict_of_vlans()
+        dict_of_vlans[new_vlanname] = new_network
+        VLAN_Administration.vlan_data_write(dict_of_vlans)
+        print('\033[33muccess!\033[0m')
+        administrate_vlans()
+    def delete_vlan():
+        vlans_dict = VLAN_Administration.get_dict_of_vlans()
+        vlan_to_remove = input('\t\033[33m Name the vlan you want to remove: \033[0m')
+        vlans_dict.pop(vlan_to_remove, default)
+        VLAN_Administration.vlan_data_write(vlans_dict)
+        print('\t\033[33mVLAN \033[0m', vlan_to_remove, ' \033[33m has been removed.\033[0m\n')
+        administrate_vlans()
+
+def administrate_vlans():
+    VLAN_Administration.display_vlans()
+    action = choose_action('What do you want to do?', 'Add', 'Delete', 'Quit')
+    match action:
+        case 'Add':
+            VLAN_Administration.add_vlan()
+        case 'Delete':
+            VLAN_Administration.delete_vlan()
+        case 'Quit':
+            start_menu()
+            return 0
+
+def start_menu():
+    action = choose_action('Hey there', 'Scan my network', 'Manage my networks')
+    match action:
+        case 'Scan my network':
+            xlsx_path = choose_xlsx_file()
+            vlanname = choose_vlan()
+            nmapDict, ip_without_mac = scan_network_return_dict(vlanname)
+            edited_xlsx_filename, changelog_filename = get_name_for_files()
+            correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
+            changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
+            ending(missingIpDictionary)
+            press_any()
+        case 'Manage my networks':
+            administrate_vlans()
 
 #print_hello_words()
 #press_any()
@@ -243,16 +330,5 @@ def scan_network_return_dict(network):
 #ending(missingIpDictionary)
 #press_any()
 
-
 print_hello_words()
-action = choose_action('Hey there', 'Scan my network', 'Manage my networks')
-match action:
-    case 'Scan my network':
-        xlsx_path = choose_xlsx_file()
-        vlanname = choose_vlan()  
-        nmapDict, ip_without_mac = scan_network_return_dict(vlanname)
-        edited_xlsx_filename, changelog_filename = get_name_for_files()
-        correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
-        changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
-        ending(missingIpDictionary)
-        press_any()
+start_menu()

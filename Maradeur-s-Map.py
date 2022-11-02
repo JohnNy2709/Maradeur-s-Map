@@ -5,17 +5,39 @@ import datetime
 import pandas
 import nmap
 
-# Сделать единообразными таблицы вланов
-# Требования: ip и mac столбцы всегда называются IP и MAC соответственно
-# Ip и mac столбцы всегда находятся на одной и той же позиции относительно других столбцов (например, всегда 1 и 2 столбцы)
-# во всех листах таблицы должны быть полными. Не допускается пропуск ip адресов
-
 kernel32 = ctypes.windll.kernel32
 kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 
 def print_hello_words():
     text = "\n\tMessrs Moony, Wormtail, Padfoot, and Prongs \n\tPurveyors of Aids to Magical Mischief-Makers \n\tare proud to present\n\tTHE MARAUDER'S MAP\n\n"
     print('\033[33m {}'.format(text))
+
+def choose_action(description, *actions):
+    # Display description & options; checks & returns input
+
+    def get_checked_input(max_possible_input):
+        flag = True
+        while flag:
+            input_to_check = input('\t')
+            try:
+                input_to_check = int(input_to_check)
+                if (input_to_check > 0) & (input_to_check <= max_possible_input):
+                    flag = False
+                else:
+                    error_message()
+            except:
+                error_message()
+        return input_to_check
+
+    print('\033[33m\n\t', description, '\033[0m')
+    i = 0
+    actions_list = []
+    for action in actions:
+        actions_list.append(action)
+        i+=1
+        print('\t\033[0m', i, ')\033[33m ', action, '\033[0m', sep='')
+    choice_number = get_checked_input(i) - 1
+    return actions_list[choice_number]
 
 def clear_screen():
     os.system('cls')
@@ -30,16 +52,14 @@ def if_format_needed(file_name, format_needed):
 def press_any():
     print('\n\t\033[33mPress any key to keep doing things..\033[0m \n')
     input()
-    clear_screen()
+    #clear_screen()
 
 def error_message(*code_index):
     match code_index:
         case '0':
             print('VLAN does not exist in .xslx file')
         case _:
-            print('\n\t\033[33m..you are doing something wrong.\033[0m ')
-    input()
-    clear_screen()
+            print('\n\t\033[33m...you are doing something wrong, try again:\033[0m\n\t')
 
 def user_choosing(max_digit_possible):
     #принять на ввод цифру/число и проверить, что оно допустимо
@@ -59,19 +79,24 @@ def user_choosing(max_digit_possible):
         return 0
 
 def choose_xlsx_file():
-    file_indexes = len(os.listdir())
     def display_files():
-        print('\t\033[33mHere are the files from my directory.\n\tChoose a .xlsx file that is older than the Gods:\n')
+        print('\t\033[33mHere are the files from my directory.\n\tSelect the .xlsx file in which you want to write the result:\n')
         files = os.listdir()
         file_index = 1
+        actual_files = []
+        ignored_files_list = ['backups', '.git', 'data', 'Maradeur-s-Map.py']
         for file_name in files:
-            current_string = '\033[0m \t' + str(file_index) + '\033[33m  ' + file_name 
-            print(current_string)
-            file_index += 1
+            if (file_name in ignored_files_list):
+                continue
+            else:
+                actual_files.append(file_name)
+                current_string = '\033[0m \t' + str(file_index) + '\033[33m  ' + file_name 
+                print(current_string)
+                file_index += 1
         print('\t' + str(file_index) + '\033[33m  Refresh\033[33m')
-        return files
+        return actual_files
     all_files = display_files()
-    file_digit = user_choosing(file_indexes)
+    file_digit = user_choosing(len(all_files))
     if (file_digit == 0):
         choose_xlsx_file()
         return 0
@@ -110,31 +135,7 @@ def get_name_for_files():
     change_log_filename = "changelog" + current_time + ".txt"
     return new_xlsx_filename, change_log_filename
 
-def macAddCheckUtility(nmapDictionary, xlsx_file_path, sheetname_vlanname, new_changelogfile_filename):
-    #creates a changelog file & returns correct list of mac-add
-    #def createDictFromNmap(nmap_file_path):
-    #    def MacAddSelection(line):
-    #        macAdd = line[13:30]
-    #        return (macAdd)
-    #    def IPSelection(line):
-    #        for i, c in enumerate(line):
-    #            if c.isdigit():
-    #                ipStartingIndex = i
-    #                break
-    #        ipAdd = line[ipStartingIndex:len(line)-1]
-    #        return (ipAdd)
-    #    dictIpMac = {}
-    #    fr = open(nmap_file_path, 'r')
-    #    for line in enumerate(fr):
-    #        if ("Nmap done" in line[1]):
-    #            break
-    #        if ("Nmap scan report" in line[1]):
-    #            ipAdd = IPSelection(line[1])
-    #        if ("MAC Address:" in line[1]):
-    #            macAdd = MacAddSelection(line[1])
-    #            dictIpMac[ipAdd] = macAdd
-    #    fr.close()
-    #    return (dictIpMac)   
+def macAddCheckUtility(nmapDictionary, xlsx_file_path, sheetname_vlanname, new_changelogfile_filename): 
     def createDictFromGoogleTable(xlsx_file_path, sheetname):
         #IP и MAC должны быть названиями столбцов. Название - первая ячейка в столбце
         dictIpMacExcess = {}
@@ -209,8 +210,6 @@ def ending(missingIp):
             print(missingIpDictionary)
 
 def scan_network_return_dict(network):
-    #Здесь же можно вытянуть hostname(реализовано)
-    # Нужно придумать, как его применить
     nm = nmap.PortScanner()
     nmapDict = {}
     ip_address_list = []
@@ -233,13 +232,27 @@ def scan_network_return_dict(network):
     return nmapDict, ip_without_mac
 
 
+#print_hello_words()
+#press_any()
+#xlsx_path = choose_xlsx_file()
+#vlanname = choose_vlan()  
+#nmapDict, ip_without_mac = scan_network_return_dict(vlanname)
+#edited_xlsx_filename, changelog_filename = get_name_for_files()
+#correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
+#changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
+#ending(missingIpDictionary)
+#press_any()
+
+
 print_hello_words()
-press_any()
-xlsx_path = choose_xlsx_file()
-vlanname = choose_vlan()  
-nmapDict, ip_without_mac = scan_network_return_dict(vlanname)
-edited_xlsx_filename, changelog_filename = get_name_for_files()
-correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
-changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
-ending(missingIpDictionary)
-press_any()
+action = choose_action('Hey there', 'Scan my network', 'Manage my networks')
+match action:
+    case 'Scan my network':
+        xlsx_path = choose_xlsx_file()
+        vlanname = choose_vlan()  
+        nmapDict, ip_without_mac = scan_network_return_dict(vlanname)
+        edited_xlsx_filename, changelog_filename = get_name_for_files()
+        correct_mac_list, missingIpDictionary= macAddCheckUtility(nmapDict, xlsx_path, vlanname, changelog_filename)
+        changes_writer(xlsx_path, vlanname, correct_mac_list, edited_xlsx_filename)
+        ending(missingIpDictionary)
+        press_any()

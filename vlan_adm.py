@@ -51,8 +51,40 @@ class VLAN_Administration :
         for vlan in vlan_dict:
             print('\t\033[0m', vlan, '\t', vlan_dict[vlan], '\033[0m')
     def add_vlan():
+        def check_net_format(network_input):
+            def check_max_val(arr):
+                check_flag = True
+                i = 0
+                if len(arr) != 5: check_flag = False
+                for val in arr:
+                    try:
+                        val = int(val)
+                        if val > 255 : check_flag = False
+                        if i == 4:
+                            if (val > 32): check_flag = False
+                        i+=1
+                    except: check_flag = False
+                return check_flag    
+            flag = True
+            while flag:
+                network_input = network_input.strip()
+                net_and_mask = network_input.split('/')
+                match len(net_and_mask):
+                    case 2:
+                        arr_to_check = net_and_mask[0].split('.')
+                        arr_to_check.append(net_and_mask[1])
+                        if check_max_val(arr_to_check):
+                            flag = False
+                        else:
+                            error_message()
+                            network_input = input('\t')
+                    case _:
+                        error_message()
+                        network_input = input('\t')
+            return network_input
         new_vlanname = input('\033[33m\n\tEnter the VLAN name: \033[0m')
         new_network = input('\033[33m\tEnter the network address: \033[0m')
+        new_network = check_net_format(new_network)
         dict_of_vlans = VLAN_Administration.get_dict_of_vlans()
         dict_of_vlans[new_vlanname] = new_network
         VLAN_Administration.vlan_data_write(dict_of_vlans)
